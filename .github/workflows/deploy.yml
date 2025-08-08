@@ -16,23 +16,11 @@ jobs:
     - name: Deploy to Orange Pi #1
       uses: appleboy/ssh-action@v0.1.10
       with:
-        host: 100.119.26.35
+        host: 100.97.252.126
         username: pi
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           echo "✅ Connected to Orange Pi 1"
-          cd ~/modbus
-          git pull
-          systemctl restart my-app
-
-    - name: Deploy to Orange Pi #2
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-        host: 100.77.148.8
-        username: pi
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          echo "✅ Connected to Orange Pi 2"
           cd ~/modbus
           git pull
           systemctl restart my-app
