@@ -1,0 +1,217 @@
+import mqtt from "mqtt";
+import ModbusRTU from "modbus-serial";
+const clientModbus = new ModbusRTU();
+import { readModbusData } from './controllers/ReadController.js';
+import { connectAndWriteArray } from './controllers/WriteController.js';
+import { exec } from "child_process";
+import os from "os";
+
+
+function getMacAddress() {
+    const interfaces = os.networkInterfaces();
+    for (const iface of Object.values(interfaces)) {
+      for (const config of iface) {
+        if (!config.internal && config.mac && config.mac !== '00:00:00:00:00:00') {
+          return config.mac.replace(/:/g, '').toLowerCase(); // без двокрапок, нижній регістр
+        }
+      }
+    }
+    return 'unknown';
+  }
+  
+  
+  
+
+function getTemperature() {
+  return new Promise((resolve, reject) => {
+    exec("cat /sys/class/thermal/thermal_zone0/temp", (error, stdout, stderr) => {
+      if (error) {
+        reject(`Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        reject(`Stderr: ${stderr}`);
+        return;
+      }
+      const temp = parseInt(stdout) / 1000;
+      resolve(temp);
+    });
+  });
+}
+
+
+
+var mqttClient;
+
+//const mqttHost = "127.0.0.1";
+const protocol = "mqtt";
+const mqttHost = "3.70.239.113"
+const port = "1883";
+// const modbusReadIP = "91.225.166.71";
+// const modbusReadPort = 850;
+//const modbusReadIP = "191.168.0.242";
+//const modbusReadIP = "192.168.1.1"
+const modbusReadIP = "10.10.10.254";
+const modbusReadPort = 502;
+//const modbusReadIP = "192.168.0.242";
+// const modbusReadPort = 850;
+const modbusWriteIP = "10.10.10.254";
+const modbusWritePort = 502;
+
+const deviceID = 'RVU31MEs6g7';   // ідентифікатор 
+
+let map;
+let writeMap;
+let settingsData = {};
+
+
+
+
+
+
+// Функція для підключення до MQTT брокера
+async function connectToBroker() {
+    const clientId = "client" + Math.random().toString(36).substring(7);
+    const hostURL = `${protocol}://${mqttHost}:${port}`;
+    const options = {
+        keepalive: 60,
+        clientId: clientId,
+        protocolId: "MQTT",
+        protocolVersion: 4,
+        clean: true,
+        reconnectPeriod: 1000,
+        connectTimeout: 30 * 1000,
+    };
+
+    mqttClient = mqtt.connect(hostURL, options);
+
+    mqttClient.on("error", (err) => {
+        console.log("Error: ", err);
+        mqttClient.end();
+    });
+
+    mqttClient.on("reconnect", () => {
+        console.log("Reconnecting...");
+    });
+
+    mqttClient.on("connect", () => {
+        //console.log("Client connected:" + clientId);
+        
+        mqttClient.subscribe("map/read", (err) => {
+            if (!err) {
+                console.log("Subscribed to topic: map/read");
+            }
+        });
+        mqttClient.subscribe("map/write", (err) => {
+            if (!err) {
+                console.log("Subscribed to topic: map/write");
+            }
+        });
+        mqttClient.subscribe("map/subscribeForConnectingOranges", (err) => {
+            if (!err) {
+                console.log("Subscribed to topic: map/subscribeForConnectingOranges");
+            }
+        });
+        
+
+        mqttClient.on('message', (topic, message) => {
+            if (topic === "map/write"){
+                writeMap = message.toString();
+                writeMap = writeMap.split('\n');
+                writeMap = writeMap.map(line => {
+                    const [type, address, name, size] = line.split(/\s+/); // Розбиваємо рядок за пробілами
+                    if(!(name in settingsData)) settingsData[name] = null;
+                    return { type, address: Number(address), name, size: size ? Number(size) : null };
+                });
+            
+            //console.log(writeMap);
+            for(let item of writeMap){
+                mqttClient.subscribe(`HP${deviceID}/in/${item.name}`, (err) => {
+                    if (!err) {
+                        console.log(`Subscribed to topic: HP${deviceID}/in/${item.name}`);
+                    }
+                });
+            }
+            }else if(topic === "map/subscribeForConnectingOranges"){
+                let oranges = message.toString();
+                const orangesArr = oranges.split('\n');
+
+                // Перевіряємо, чи жоден рядок не містить deviceID (навіть як частину)
+                const containsDeviceID = orangesArr.some(line => line.includes(deviceID));
+
+                if (!containsDeviceID) {
+                oranges += "\n" + deviceID;
+                mqttClient.publish("map/subscribeForConnectingOranges", oranges, { qos: 0, retain: true });
+                }
+
+            }
+    });
+
+        
+    });
+
+
+    mqttClient.on('message', (topic, message) => {
+        if (topic === "map/read"){
+
+            map = message.toString();
+            map = map.split('\n'); // Розбиваємо текст на рядки
+
+    map = map.map(line => {
+        const [type, address, name, size] = line.split(/\s+/); // Розбиваємо рядок за пробілами
+        return { type, address: Number(address), name, size: size ? Number(size) : null };
+    });
+        }
+        if (topic === "map/write"){
+            writeMap = message.toString();
+            writeMap = writeMap.split('\n');
+            writeMap = writeMap.map(line => {
+                const [type, address, name, size] = line.split(/\s+/); // Розбиваємо рядок за пробілами
+                return { type, address: Number(address), name, size: size ? Number(size) : null };
+            });
+        }
+        // HP1/in/P_Setpoints.User_SP_Cool => 1.234
+        if(topic.includes("/in/")){
+            
+            const topicArr = topic.split('/');
+            for(let item of writeMap){
+
+                if(item.name === topicArr[2]){
+                    connectAndWriteArray(JSON.parse(message.toString()), item.address, modbusReadIP, modbusReadPort, item.type, item.size);
+                    break;
+                }
+            }
+        }
+
+});
+}
+
+
+
+
+
+
+await connectToBroker();
+
+
+async function readAndWriteDataToBroker() {
+    const mac = getMacAddress();
+  
+    getTemperature()
+        .then((temp) => console.log(`Температура: ${temp} °C`))
+        .catch((error) => console.error(error));
+    //readModbusData(modbusReadIP, modbusReadPort, mqttClient, map.concat(writeMap));
+    //console.log(map)
+
+    if (!mqttClient.connected) {
+            console.error("❌ MQTT-клієнт відключений! Повторюю підключення...");
+            await mqttClient.reconnect();
+        }
+
+    readModbusData(modbusReadIP, modbusReadPort, mqttClient, map, writeMap, settingsData, mac, deviceID);
+}
+
+setInterval(() => readAndWriteDataToBroker(), 3000);
+
+
+

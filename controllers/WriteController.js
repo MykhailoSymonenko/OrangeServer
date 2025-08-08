@@ -1,26 +1,31 @@
 import ModbusRTU from "modbus-serial";
 
 
-export const connectAndWriteArray = async function (floatValue, sensorID, flag) {
-    const modbusWriteIP = "127.0.0.1";
-    const modbusWritePort = 502;
+export const connectAndWriteArray = async function (floatValue, sensorID, clientModbus, itemType, itemSize) {
+    // const modbusWriteIP = "192.168.0.242";
+    // const modbusWritePort = 502;
     let attempt = 0;
     const maxAttempts = 3; // Максимальна кількість спроб підключення
     const delay = 2000; // Затримка між спробами (2 секунди)
-    const clientModbus = new ModbusRTU();
+    //const clientModbus = new ModbusRTU();
     while (attempt < maxAttempts) {
         try {
-            // Спроба підключення до сервера
             console.log(`Спроба підключення... (${attempt + 1}/${maxAttempts})`);
-            await clientModbus.connectTCP(modbusWriteIP, { port: modbusWritePort });
-            clientModbus.setID(1);
+            //await clientModbus.connectTCP(modbusWriteIP, { port: modbusWritePort });
+            //clientModbus.setID(1);
 
-            const registers = floatToRegisters(floatValue);
-
-            const sensorAddress = flag ? sensorID  : parseInt(sensorID, 10)  + 10;
-
-            await clientModbus.writeRegisters(sensorAddress, registers);
-            clientModbus.close();
+            if(itemType === "Coil"){
+                console.log('1')
+                await clientModbus.writeCoil(sensorID, floatValue);
+            }else{
+                const registers = (itemSize === null) ? [floatValue] : floatToRegisters(floatValue);
+                //const sensorAddress = flag ? sensorID  : parseInt(sensorID, 10)  + 10;
+                const sensorAddress = sensorID;
+                console.log('start')
+                await clientModbus.writeRegisters(sensorAddress, registers);
+                console.log('end')
+            }
+            //clientModbus.close();
             console.log(`Число ${floatValue} в датчик ${sensorID} записано!`);
             return; // Виходимо з функції після успішного виконання
         } catch (error) {
@@ -32,6 +37,7 @@ export const connectAndWriteArray = async function (floatValue, sensorID, flag) 
             } else {
                 console.log("Не вдалося підключитися після кількох спроб.");
                 console.log(`Число ${floatValue} в датчик ${sensorID} НЕ записано!`);
+                //clientModbus.close();
             }
         }
     }
@@ -41,7 +47,9 @@ export const connectAndWriteArray = async function (floatValue, sensorID, flag) 
 
 function floatToRegisters(value) {
     const buffer = Buffer.alloc(4);
-    buffer.writeFloatBE(value, 0); // Записуємо float у буфер (Big Endian)
-    return [buffer.readUInt16BE(0), buffer.readUInt16BE(2)];
+    //buffer.writeFloatBE(value, 0); // Записуємо float у буфер (Big Endian)
+    //return [buffer.readUInt16BE(0), buffer.readUInt16BE(2)];
+    buffer.writeFloatLE(value, 0); // Записуємо float у буфер (Little Endian)
+    return [buffer.readUInt16LE(0), buffer.readUInt16LE(2)];
 }
 
