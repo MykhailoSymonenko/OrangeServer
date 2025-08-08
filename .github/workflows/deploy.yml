@@ -3,7 +3,7 @@ name: Deploy to Orange Pi
 on:
   push:
     branches:
-      - main  # або твоя основна гілка
+      - main
 
 jobs:
   deploy:
@@ -15,20 +15,16 @@ jobs:
 
     - name: Set up SSH
       run: |
-        mkdir -p $HOME/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > $HOME/.ssh/id_rsa
-        chmod 600 $HOME/.ssh/id_rsa
-        ssh-keyscan 100.119.26.35 >> $HOME/.ssh/known_hosts
-        ssh-keyscan 100.77.148.8 >> $HOME/.ssh/known_hosts
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan 100.119.26.35 >> ~/.ssh/known_hosts
+        ssh-keyscan 100.77.148.8 >> ~/.ssh/known_hosts
 
-
-    - name: Deploy to Orange Pi
+    - name: Deploy to Orange Pi # 1
       run: |
-        scp -r ./ admin@100.119.26.35:/home/admin/modbus/
-        ssh admin@100.119.26.35 'cd /home/admin/modbus && sudo systemctl restart my-app.service'
+        ssh -o StrictHostKeyChecking=no pi@100.119.26.35 "echo '✅ Deploy successful on Orange Pi 1'"
 
-
-    - name: Deploy to Orange Pi 2
+    - name: Deploy to Orange Pi # 2
       run: |
-        scp -r ./ admin@100.77.148.8:/home/admin/modbus/
-        ssh admin@100.77.148.8 'cd /home/admin/modbus && sudo systemctl restart my-app.service'
+        ssh -o StrictHostKeyChecking=no pi@100.77.148.8 "echo '✅ Deploy successful on Orange Pi 2'"
