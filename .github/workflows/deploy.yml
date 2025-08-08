@@ -1,0 +1,34 @@
+name: Deploy to Orange Pi
+
+on:
+  push:
+    branches:
+      - main  # або твоя основна гілка
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan 100.119.26.35 >> ~/.ssh/known_hosts
+        ssh-keyscan 100.77.148.8 >> ~/.ssh/known_hosts
+
+
+    - name: Deploy to Orange Pi
+      run: |
+        scp -r ./ admin@100.119.26.35:/home/admin/modbus/
+        ssh admin@100.119.26.35 'cd /home/admin/modbus && sudo systemctl restart my-app.service'
+
+
+    - name: Deploy to Orange Pi 2
+      run: |
+        scp -r ./ admin@100.77.148.8:/home/admin/modbus/
+        ssh admin@100.77.148.8 'cd /home/admin/modbus && sudo systemctl restart my-app.service'
