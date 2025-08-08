@@ -12,26 +12,27 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      
-    - name: Debug HOME
-      run: |
-        echo "HOME is: $HOME"
-        whoami
-        ls -la ~
 
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan 100.119.26.35 >> ~/.ssh/known_hosts
-        ssh-keyscan 100.77.148.8 >> ~/.ssh/known_hosts
+    - name: Deploy to Orange Pi #1
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: 100.119.26.35
+        username: pi
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "✅ Connected to Orange Pi 1"
+          cd ~/modbus
+          git pull
+          systemctl restart my-app
 
-
-    - name: Deploy to Orange Pi # 1
-      run: |
-        ssh -o StrictHostKeyChecking=no pi@100.119.26.35 "echo '✅ Deploy successful on Orange Pi 1'"
-
-    - name: Deploy to Orange Pi # 2
-      run: |
-        ssh -o StrictHostKeyChecking=no pi@100.77.148.8 "echo '✅ Deploy successful on Orange Pi 2'"
+    - name: Deploy to Orange Pi #2
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: 100.77.148.8
+        username: pi
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "✅ Connected to Orange Pi 2"
+          cd ~/modbus
+          git pull
+          systemctl restart my-app
