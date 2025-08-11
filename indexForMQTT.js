@@ -301,6 +301,7 @@ await connectToBroker();
 
 async function readAndWriteDataToBroker() {
     console.log(5);
+    
     // Перевіряємо, чи не відбувається запис
     if (isWriting) {
         // Додаткова перевірка на "заморожений" стан
