@@ -13,14 +13,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Deploy to Orange Pi #1
+    - name: Deploy to Orange Pi
       uses: appleboy/ssh-action@v0.1.10
       with:
         host: 100.97.252.126
-        username: pi
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        username: admin
+        key: ${{ secrets.SSH_KEY }}
         script: |
-          echo "✅ Connected to Orange Pi 1"
+          echo "✅ Connected to Orange Pi"
           cd ~/modbus
           git pull
           systemctl restart my-app
