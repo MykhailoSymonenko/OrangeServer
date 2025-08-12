@@ -14,7 +14,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy via SSH
-        shell: powershell
+        shell: pwsh
         run: |
-          ssh -i "C:\Users\aidan\.ssh\id_rsa" -o StrictHostKeyChecking=no admin@100.97.252.126 `
-            "cd ~/modbus && git pull && echo 'admin' | sudo -S systemctl restart my-app"
+          $privateKey = Get-Content "C:\Users\aidan\.ssh\id_rsa"
+          $sshCommand = @"
+          ssh -i C:\Users\aidan\.ssh\id_rsa -o StrictHostKeyChecking=no admin@100.97.252.126 '
+            cd ~/modbus &&
+            git pull &&
+            sudo systemctl restart my-app
+          '
+          "@
+          Invoke-Expression $sshCommand
