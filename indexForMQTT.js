@@ -6,7 +6,7 @@ import { exec } from "child_process";
 import os from "os";
 import dotenv from "dotenv";
 dotenv.config();
-console.log("first test")
+console.log("test")
 function getMacAddress() {
     const interfaces = os.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
