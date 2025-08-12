@@ -7,20 +7,19 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Deploy to Orange Pi
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-        host: 100.97.252.126
-        username: admin
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          echo "✅ Connected to Orange Pi"
-          cd ~/modbus
-          git pull
-          systemctl restart my-app
+      - name: Deploy to Orange Pi
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 100.97.252.126
+          username: admin
+          key_path: C:\Users\aidan\.ssh\id_rsa
+          script: |
+            echo "✅ Connected to Orange Pi"
+            cd ~/modbus
+            git pull
+            systemctl restart my-app
