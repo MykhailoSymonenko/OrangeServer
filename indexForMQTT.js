@@ -330,7 +330,7 @@ async function readAndWriteDataToBroker() {
 }
 
 // Запускаємо регулярне читання
-readInterval = setInterval(() => readAndWriteDataToBroker(), 500);
+readInterval = setInterval(() => readAndWriteDataToBroker(), 3000);
 
 
 
