@@ -17,7 +17,7 @@ jobs:
         shell: pwsh
         run: |
           $privateKey = Get-Content "C:\Users\aidan\.ssh\id_rsa"
-          $hosts = @("100.97.252.126", "100.77.148.8")  # додай IP другого Orange Pi
+          $hosts = @("100.108.120.42")  # додай IP другого Orange Pi
 
           foreach ($host in $hosts) {
             Write-Host "Deploying to $host..."
