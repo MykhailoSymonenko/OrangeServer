@@ -16,10 +16,24 @@ jobs:
       - name: Deploy via SSH
         shell: pwsh
         run: |
-          $privateKey = Get-Content "C:\Users\aidan\.ssh\id_rsa"
-          $sshCommand = @"
-          ssh -i C:\Users\aidan\.ssh\id_rsa -o StrictHostKeyChecking=no admin@100.97.252.126 '
-            cd ~/modbus && git pull && echo "admin" | sudo -S systemctl restart my-app
-          '
-          "@
-          Invoke-Expression $sshCommand
+          $privateKeyPath = "C:\Users\aidan\.ssh\id_rsa"
+          $hosts = @("100.97.252.126", "100.77.148.8")
+
+          foreach ($host in $hosts) {
+            Write-Host "Deploying to $host..."
+
+            $sshCommand = @"
+            ssh -i $privateKeyPath -o StrictHostKeyChecking=no admin@$host '
+              cd ~/modbus &&
+              git pull | tee /tmp/gitlog &&
+              if ! grep -q "Already up to date" /tmp/gitlog; then
+                echo "[CI/CD] Restarting my-app.service at \$(date)" >> ~/modbus/deploy.log &&
+                sudo systemctl restart my-app.service
+              else
+                echo "[CI/CD] No changes. Skipping restart at \$(date)" >> ~/modbus/deploy.log
+              fi
+            '
+            "@ -replace "`r", ""
+
+            Invoke-Expression $sshCommand
+          }
